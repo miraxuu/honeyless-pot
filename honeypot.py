@@ -54,9 +54,9 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             self.server.log_function(f"User-Agent: {user_agent}", "red")
             self.server.log_function("-" * 50, "red")
             
-    # Check if it's a GET request
+    # if GET request
     '''    if "GET" in request_line:
-            # Write to an intermediate log file for processing
+            #Write to an intermediate log file for processing
             intermediate_log = "intermediate_log.txt"
             with open(intermediate_log, 'w') as f:
                  f.write("HTTP SERVER LOG\n")
@@ -66,20 +66,23 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                  f.write("-" * 50 + "\n")
     
 
-        # Convert the log and add features
+        #Convert the log and add features
         intermediate_csv = "intermediate_http.csv"
         enriched_csv = "enriched_http.csv"
         process_log_file(intermediate_log, intermediate_csv)
         filter_and_add_features(intermediate_csv, enriched_csv)
 
-        # Load the enriched data and predict
+        #Load the data and predict
         enriched_data = pd.read_csv(enriched_csv)
         predictions = sql_injection_model.predict(enriched_data)
 
-        # Display the prediction result
-        result = predictions[0]  # Assuming one request at a time
+        #Display the prediction result
+        result = predictions[0]
         classification = f"Is this an SQL attack: {result}"
         self.server.log_function(classification, "blue")
+
+        if result == 1:
+             #Code to send to an alert to email
     '''
 
 class HoneypotGUI:
@@ -96,13 +99,13 @@ class HoneypotGUI:
         self.create_widgets()
 
     def create_widgets(self):
-        # IP Address and Port Entry
+        #IP Address and Port Entry
         tk.Label(self.root, text="IP ADDRESS").grid(row=0, column=0, padx=5, pady=5)
         tk.Entry(self.root, textvariable=self.ip_var).grid(row=0, column=1, padx=5, pady=5)
         tk.Label(self.root, text="PORT").grid(row=0, column=2, padx=5, pady=5)
         tk.Entry(self.root, textvariable=self.port_var).grid(row=0, column=3, padx=5, pady=5)
 
-        # Control Buttons
+        #Control Buttons
         self.start_button = tk.Button(self.root, text="Start", command=self.start_server)
         self.start_button.grid(row=1, column=0, padx=5, pady=5)
         self.stop_button = tk.Button(self.root, text="Stop", command=self.stop_server, state="disabled")
@@ -112,7 +115,7 @@ class HoneypotGUI:
         self.reset_button = tk.Button(self.root, text="Reset", command=self.reset_settings)
         self.reset_button.grid(row=1, column=3, padx=5, pady=5)
 
-        # Log Display
+        #Log Display
         self.log_display = scrolledtext.ScrolledText(self.root, width=70, height=20, state="normal")
         self.log_display.grid(row=2, column=0, columnspan=4, padx=10, pady=10)
         self.log_display.tag_config("red", foreground="red")
@@ -124,7 +127,7 @@ class HoneypotGUI:
         timestamp = time.strftime("%H%M%d%m")
         self.log_file = f"log_file_{timestamp}.txt"
 
-        # Start HTTP server and sniffer
+        #Start HTTP server and sniffer
         self.server_thread = threading.Thread(target=self.run_server, args=(ip, port))
         self.server_thread.daemon = True
         self.server_thread.start()
@@ -158,19 +161,17 @@ class HoneypotGUI:
                 dst_ip = packet[IP].dst
                 dst_port = udp_layer.dport
 
-                # Generate a randomized payload for UDP response
+                #Randomized payload for UDP response
                 responses = ["Service is running", "Data received", "Processing request"]
                 payload = random.choice(responses)
 
-                # Send the UDP response
+                #Send the UDP response
                 self.send_udp_response(src_ip, src_port, dst_ip, dst_port, payload=payload)
 
         sniff(filter=f"host {ip} and (tcp port {port} or udp port {port})", prn=packet_callback, store=0)
 
     def send_udp_response(self, src_ip, src_port, dst_ip, dst_port, payload="Honeypot Response"):
-        """
-        Send a UDP response packet to simulate an active service.
-        """
+
         pkt = IP(src=dst_ip, dst=src_ip) / UDP(sport=dst_port, dport=src_port) / payload
         send(pkt, verbose=False)
         self.log(f"Sent UDP response to {src_ip}:{src_port} with payload: {payload}", "blue")
@@ -178,16 +179,13 @@ class HoneypotGUI:
     def extract_packet_features(self, packet):
         features = {}
 
-        # Timestamp
         features['time'] = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
 
-        # Ethernet Layer
         if Ether in packet:
             features['src_mac'] = packet[Ether].src
             features['dst_mac'] = packet[Ether].dst
             features['eth_type'] = packet[Ether].type
 
-        # IP Layer
         if IP in packet:
             ip_layer = packet[IP]
             features['src_ip'] = ip_layer.src
@@ -198,7 +196,6 @@ class HoneypotGUI:
             features['ip_flags'] = ip_layer.flags
             features['frag_offset'] = ip_layer.frag
 
-        # TCP Layer
         if TCP in packet:
             tcp_layer = packet[TCP]
             features['type'] = "TCP"
@@ -211,7 +208,6 @@ class HoneypotGUI:
             features['urgent_pointer'] = tcp_layer.urgptr
             features['tcp_options'] = tcp_layer.options
 
-        # UDP Layer
         if UDP in packet:
             udp_layer = packet[UDP]
             features['type'] = "UDP"
@@ -220,7 +216,6 @@ class HoneypotGUI:
             features['udp_len'] = udp_layer.len
             features['udp_checksum'] = udp_layer.chksum
 
-        # Application Layer (Raw Payload)
         if Raw in packet:
             raw_data = bytes(packet[Raw])
             try:
@@ -230,7 +225,6 @@ class HoneypotGUI:
                 features['payload_decoded'] = raw_data.hex()
             features['payload_raw'] = raw_data.hex()
 
-        # Packet Size
         features['packet_size'] = len(packet)
 
         return features
@@ -272,7 +266,7 @@ class HoneypotGUI:
                 f.write(f"{message}\n")
 
 
-# Run the application
+#Run the application
 if __name__ == "__main__":
     root = tk.Tk()
     app = HoneypotGUI(root)
